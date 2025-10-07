@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>中秋活动抽奖后台</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #ffd89b, #19547b);
+      color: #333;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 { color: white; margin-bottom: 20px; }
+    #searchInput {
+      padding: 8px;
+      border-radius: 5px;
+      border: none;
+      width: 200px;
+      margin-bottom: 10px;
+    }
+    button {
+      margin: 10px 5px;
+      padding: 10px 20px;
+      background: #f8b500;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover { background: #e09e00; }
+    table {
+      width: 100%;
+      max-width: 600px;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    th, td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; }
+    th { background: #f8b500; color: white; }
+    tr:last-child td { border-bottom: none; }
+    #winnerBox {
+      margin-top: 20px;
+      font-size: 18px;
+      color: white;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎁 中秋活动抽奖后台</h1>
+
+  <input type="text" id="searchInput" placeholder="🔍 搜索姓名或固本号码" />
+  <button id="exportBtn">📤 导出名单</button>
+  <button id="drawBtn">随机抽奖</button>
+
+  <div id="winnerBox"></div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>姓名</th>
+        <th>固本号码</th>
+      </tr>
+    </thead>
+    <tbody id="entryTableBody"></tbody>
+  </table>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src("https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAjxv9FWHnZ5_kHyK7VQqSLYLKarP2OVEo",
+      databaseURL: "https://yeee-97630-default-rtdb.firebaseio.com/"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    const entryTableBody = document.getElementById('entryTableBody');
+    const winnerBox = document.getElementById('winnerBox');
+    const drawBtn = document.getElementById('drawBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const searchInput = document.getElementById('searchInput');
+
+    let entries = [];
+
+    database.ref('entries').on('value', snapshot => {
+      entries = [];
+      snapshot.forEach(child => {
+        const val = child.val();
+        entries.push(val);
+      });
+      renderTable(entries);
+    });
+
+    function renderTable(list) {
+      entryTableBody.innerHTML = '';
+      list.forEach(e => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${e.name}</td><td>${e.voucher}</td>`;
+        entryTableBody.appendChild(tr);
+      });
+    }
+
+    searchInput.addEventListener('input', () => {
+      const kw = searchInput.value.toLowerCase();
+      const filtered = entries.filter(e =>
+        e.name.toLowerCase().includes(kw) ||
+        e.voucher.toLowerCase().includes(kw)
+      );
+      renderTable(filtered);
+    });
+
+    exportBtn.addEventListener('click', () => {
+      if (entries.length === 0) {
+        alert('暂无资料');
+        return;
+      }
+      let csv = '姓名,固本号码\n';
+      entries.forEach(e => { csv += `${e.name},${e.voucher}\n`; });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = '报名名单.csv';
+      link.click();
+    });
+
+    drawBtn.addEventListener('click', () => {
+      if (entries.length === 0) {
+        winnerBox.textContent = '⚠️ 暂无报名资料';
+        return;
+      }
+      const idx = Math.floor(Math.random() * entries.length);
+      const w = entries[idx];
+      winnerBox.innerHTML = `🎉 恭喜 <strong>${w.name}</strong><br>固本号码：${w.voucher}`;
+    });
+  </script>
+
+</body>
+</html>
