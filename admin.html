@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>中秋抽奖后台</title>
+  <style>
+    body {
+      font-family: "Microsoft YaHei", sans-serif;
+      background: linear-gradient(135deg, #ffd89b, #19547b);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 { color: white; margin-bottom: 10px; }
+    #controls { margin-bottom: 20px; }
+    button {
+      margin: 5px;
+      padding: 10px 15px;
+      background: #f8b500;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover { background: #e09e00; }
+    input { padding: 5px 8px; border-radius: 5px; border: none; }
+    table {
+      width: 90%;
+      max-width: 800px;
+      background: white;
+      border-collapse: collapse;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background: #f8b500;
+      color: white;
+    }
+    #winnerBox {
+      margin-top: 20px;
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎁 中秋抽奖后台</h1>
+
+  <div id="controls">
+    <input type="text" id="searchInput" placeholder="搜索姓名或固本">
+    <button id="drawBtn">🎯 抽奖</button>
+    <button id="resetBtn">🔄 重置抽奖</button>
+    <button id="exportBtn">📤 导出名单</button>
+  </div>
+
+  <div id="winnerBox"></div>
+
+  <table>
+    <thead>
+      <tr><th>姓名</th><th>固本号码</th></tr>
+    </thead>
+    <tbody id="entryTableBody"></tbody>
+  </table>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBEWK0mYACfIqS1l9_oiApN6UQ1Uv3PsD8",
+      databaseURL: "https://console.firebase.google.com/u/0/project/mid-autumn-festival-2b9f3/database/mid-autumn-festival-2b9f3-default-rtdb/data/~2F?hl=zh-cn"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const entryTableBody = document.getElementById('entryTableBody');
+    const winnerBox = document.getElementById('winnerBox');
+    let entries = [];
+    let remainingEntries = [];
+
+    db.ref('entries').on('value', snapshot => {
+      entries = [];
+      snapshot.forEach(child => entries.push(child.val()));
+      remainingEntries = [...entries];
+      renderTable(entries);
+    });
+
+    function renderTable(list) {
+      entryTableBody.innerHTML = '';
+      list.forEach(e => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${e.name}</td><td>${e.voucher}</td>`;
+        entryTableBody.appendChild(tr);
+      });
+    }
+
+    document.getElementById('searchInput').addEventListener('input', e => {
+      const kw = e.target.value.toLowerCase();
+      const filtered = entries.filter(x => 
+        x.name.toLowerCase().includes(kw) || x.voucher.toLowerCase().includes(kw)
+      );
+      renderTable(filtered);
+    });
+
+    document.getElementById('drawBtn').addEventListener('click', () => {
+      if (remainingEntries.length === 0) return winnerBox.textContent = '⚠️ 没有可抽的参与者了';
+      const idx = Math.floor(Math.random() * remainingEntries.length);
+      const winner = remainingEntries.splice(idx, 1)[0];
+      winnerBox.textContent = `🎉 恭喜 ${winner.name}（固本：${winner.voucher}）`;
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      remainingEntries = [...entries];
+      winnerBox.textContent = '✅ 已重置抽奖池';
+    });
+
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      let csv = '姓名,固本号码\n';
+      entries.forEach(e => { csv += `${e.name},${e.voucher}\n`; });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = '报名名单.csv';
+      link.click();
+    });
+  </script>
+</body>
+</html>
