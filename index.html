@@ -1,80 +1,41 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>中秋活动报名</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    body {
-      font-family: "Microsoft YaHei", sans-serif;
-      background: linear-gradient(135deg, #fceabb, #f8b500);
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    h1 { color: #333; margin-bottom: 10px; }
-    form {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      width: 100%;
-      max-width: 400px;
-    }
-    label { display: block; margin-top: 10px; font-weight: bold; }
-    input {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      font-size: 16px;
-    }
-    button[type="submit"] {
-      margin-top: 20px;
-      width: 100%;
-      padding: 10px;
-      background: #f8b500;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      font-size: 18px;
-      cursor: pointer;
-    }
-    button[type="submit"]:hover { background: #e09e00; }
-    #successMessage {
-      margin-top: 15px;
-      color: green;
-      font-size: 16px;
-      text-align: center;
-    }
+    body { font-family: "Microsoft YaHei", sans-serif; background: #f4f4f4; padding: 20px; text-align: center; }
+    .container { max-width: 400px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; }
+    h1 { margin-bottom: 10px; }
+    form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+    input { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 5px; }
+    button { padding: 10px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #0056b3; }
     #qrcode { margin-top: 20px; }
   </style>
 </head>
 <body>
 
-  <h1>📋 中秋活动报名</h1>
+  <div class="container">
+    <h1>🎉 中秋活动报名</h1>
 
-  <form id="entryForm">
-    <label for="name">姓名（必填）</label>
-    <input type="text" id="name" required>
+    <div id="qrcode"></div>
 
-    <label for="voucher">固本号码（必填）</label>
-    <input type="text" id="voucher" required>
+    <form id="entryForm">
+      <input type="text" id="name" placeholder="姓名（必填）" required>
+      <input type="text" id="voucher" placeholder="固本号码（必填）" required>
+      <button type="submit">提交报名</button>
+    </form>
 
-    <button type="submit">提交报名</button>
-  </form>
-
-  <div id="successMessage"></div>
-  <div id="qrcode"></div>
-
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <p id="statusMsg"></p>
+  </div>
 
   <script>
-    // 这里换成你自己的 Firebase 配置 👇
+    // ✅ Firebase 配置
     const firebaseConfig = {
       apiKey: "AIzaSyBEWK0mYACfIqS1l9_oiApN6UQ1Uv3PsD8",
       databaseURL: "https://mid-autumn-festival-2b9f3-default-rtdb.asia-southeast1.firebasedatabase.app/"
@@ -82,28 +43,37 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // 表单提交
-    document.getElementById('entryForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const name = document.getElementById('name').value.trim();
-      const voucher = document.getElementById('voucher').value.trim();
-      if (!name || !voucher) return alert('请填写完整');
+    // ✅ 生成本页二维码
+    new QRCode(document.getElementById("qrcode"), {
+      text: window.location.href,
+      width: 150,
+      height: 150
+    });
 
-      db.ref('entries').push({ name, voucher }).then(() => {
-        document.getElementById('successMessage').textContent = '✅ 报名成功！';
-        e.target.reset();
-        setTimeout(()=> document.getElementById('successMessage').textContent = '', 2500);
+    // ✅ 表单提交 → 写入 Firebase
+    document.getElementById("entryForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const name = document.getElementById("name").value.trim();
+      const voucher = document.getElementById("voucher").value.trim();
+
+      if (!name || !voucher) {
+        alert("请填写所有必填项");
+        return;
+      }
+
+      db.ref("entries").push({
+        name: name,
+        voucher: voucher,
+        timestamp: Date.now()
+      }).then(() => {
+        document.getElementById("statusMsg").innerText = "✅ 报名成功！";
+        document.getElementById("entryForm").reset();
+      }).catch(err => {
+        console.error(err);
+        document.getElementById("statusMsg").innerText = "❌ 提交失败，请稍后再试";
       });
     });
-
-    // 生成二维码
-    new QRCode(document.getElementById('qrcode'), {
-      text: window.location.href.split('?')[0],
-      width: 180,
-      height: 180
-    });
   </script>
+
 </body>
 </html>
-
-
