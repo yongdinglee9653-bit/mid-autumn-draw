@@ -1,78 +1,43 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>中秋抽奖后台</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>抽奖后台</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <style>
-    body {
-      font-family: "Microsoft YaHei", sans-serif;
-      background: linear-gradient(135deg, #ffd89b, #19547b);
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    h1 { color: white; margin-bottom: 10px; }
-    #controls { margin-bottom: 20px; }
-    button {
-      margin: 5px;
-      padding: 10px 15px;
-      background: #f8b500;
-      border: none;
-      color: white;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover { background: #e09e00; }
-    input { padding: 5px 8px; border-radius: 5px; border: none; }
-    table {
-      width: 90%;
-      max-width: 800px;
-      background: white;
-      border-collapse: collapse;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    th, td {
-      padding: 10px;
-      border-bottom: 1px solid #eee;
-    }
-    th {
-      background: #f8b500;
-      color: white;
-    }
-    #winnerBox {
-      margin-top: 20px;
-      color: white;
-      font-size: 20px;
-      font-weight: bold;
-    }
+    body { font-family: "Microsoft YaHei", sans-serif; background: #f9f9f9; padding: 20px; }
+    h1 { text-align: center; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    th { background: #007bff; color: white; }
+    input[type="text"] { padding: 8px; width: 200px; }
+    button { padding: 8px 12px; margin-left: 10px; cursor: pointer; }
   </style>
 </head>
 <body>
 
-  <h1>🎁 中秋抽奖后台</h1>
+  <h1>🎯 抽奖后台管理</h1>
 
-  <div id="controls">
-    <input type="text" id="searchInput" placeholder="搜索姓名或固本">
-    <button id="drawBtn">🎯 抽奖</button>
-    <button id="resetBtn">🔄 重置抽奖</button>
-    <button id="exportBtn">📤 导出名单</button>
+  <div style="text-align:center; margin-bottom: 20px;">
+    <input type="text" id="searchBox" placeholder="搜索姓名或固本号码">
+    <button onclick="exportCSV()">导出 CSV</button>
+    <button onclick="drawWinner()">随机抽奖</button>
   </div>
-
-  <div id="winnerBox"></div>
 
   <table>
     <thead>
-      <tr><th>姓名</th><th>固本号码</th></tr>
+      <tr>
+        <th>姓名</th>
+        <th>固本号码</th>
+      </tr>
     </thead>
-    <tbody id="entryTableBody"></tbody>
+    <tbody id="entriesTable"></tbody>
   </table>
 
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <script>
+    // ✅ Firebase 配置
     const firebaseConfig = {
       apiKey: "AIzaSyBEWK0mYACfIqS1l9_oiApN6UQ1Uv3PsD8",
       databaseURL: "https://mid-autumn-festival-2b9f3-default-rtdb.asia-southeast1.firebasedatabase.app/"
@@ -80,57 +45,61 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const entryTableBody = document.getElementById('entryTableBody');
-    const winnerBox = document.getElementById('winnerBox');
-    let entries = [];
-    let remainingEntries = [];
+    const tableBody = document.getElementById("entriesTable");
+    let allEntries = [];
 
-    db.ref('entries').on('value', snapshot => {
-      entries = [];
-      snapshot.forEach(child => entries.push(child.val()));
-      remainingEntries = [...entries];
-      renderTable(entries);
+    // ✅ 实时监听数据
+    db.ref("entries").on("value", snapshot => {
+      tableBody.innerHTML = "";
+      allEntries = [];
+      snapshot.forEach(child => {
+        const data = child.val();
+        allEntries.push(data);
+      });
+      renderTable(allEntries);
     });
 
-    function renderTable(list) {
-      entryTableBody.innerHTML = '';
-      list.forEach(e => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${e.name}</td><td>${e.voucher}</td>`;
-        entryTableBody.appendChild(tr);
+    // ✅ 渲染表格
+    function renderTable(data) {
+      tableBody.innerHTML = "";
+      data.forEach(entry => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${entry.name}</td><td>${entry.voucher}</td>`;
+        tableBody.appendChild(tr);
       });
     }
 
-    document.getElementById('searchInput').addEventListener('input', e => {
-      const kw = e.target.value.toLowerCase();
-      const filtered = entries.filter(x => 
-        x.name.toLowerCase().includes(kw) || x.voucher.toLowerCase().includes(kw)
+    // ✅ 搜索
+    document.getElementById("searchBox").addEventListener("input", e => {
+      const q = e.target.value.toLowerCase();
+      const filtered = allEntries.filter(entry =>
+        entry.name.toLowerCase().includes(q) ||
+        entry.voucher.toLowerCase().includes(q)
       );
       renderTable(filtered);
     });
 
-    document.getElementById('drawBtn').addEventListener('click', () => {
-      if (remainingEntries.length === 0) return winnerBox.textContent = '⚠️ 没有可抽的参与者了';
-      const idx = Math.floor(Math.random() * remainingEntries.length);
-      const winner = remainingEntries.splice(idx, 1)[0];
-      winnerBox.textContent = `🎉 恭喜 ${winner.name}（固本：${winner.voucher}）`;
-    });
-
-    document.getElementById('resetBtn').addEventListener('click', () => {
-      remainingEntries = [...entries];
-      winnerBox.textContent = '✅ 已重置抽奖池';
-    });
-
-    document.getElementById('exportBtn').addEventListener('click', () => {
-      let csv = '姓名,固本号码\n';
-      entries.forEach(e => { csv += `${e.name},${e.voucher}\n`; });
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
+    // ✅ 导出 CSV
+    function exportCSV() {
+      const csvContent = "姓名,固本号码\n" + allEntries.map(e => `${e.name},${e.voucher}`).join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = '报名名单.csv';
+      link.download = "报名数据.csv";
       link.click();
-    });
+    }
+
+    // ✅ 抽奖
+    function drawWinner() {
+      if (allEntries.length === 0) {
+        alert("暂无报名数据！");
+        return;
+      }
+      const randomIndex = Math.floor(Math.random() * allEntries.length);
+      const winner = allEntries[randomIndex];
+      alert(`🎉 恭喜中奖！\n姓名：${winner.name}\n固本号码：${winner.voucher}`);
+    }
   </script>
+
 </body>
 </html>
-
