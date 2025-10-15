@@ -3,37 +3,78 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>中秋活动抽奖后台</title>
+  <title>中秋抽奖后台</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    h1 { color: #d2691e; }
-    #winnerBox {
-      margin-top: 20px;
-      padding: 15px;
-      border: 2px solid #d2691e;
-      border-radius: 10px;
-      max-width: 300px;
+    body {
+      font-family: "Microsoft Yahei", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #fdf6e3, #f8e1b8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+    }
+
+    h1 {
+      color: #d2691e;
+      font-size: 2.5em;
+      margin-top: 50px;
       text-align: center;
     }
-    #winnerName { font-size: 1.4em; font-weight: bold; }
-    #winnerVoucher { font-size: 1.2em; color: #555; }
-    button {
-      padding: 10px 20px;
+
+    #drawBtn {
+      padding: 15px 40px;
       background: #d2691e;
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 12px;
       cursor: pointer;
-      font-size: 1em;
+      font-size: 1.3em;
+      margin-top: 30px;
+      transition: transform 0.2s, background 0.2s;
     }
-    button:hover { background: #a6530e; }
+    #drawBtn:hover {
+      background: #a6530e;
+      transform: scale(1.05);
+    }
+
+    #winnerBox {
+      margin-top: 40px;
+      padding: 25px;
+      border: 3px solid #d2691e;
+      border-radius: 15px;
+      background: #fffaf0;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      display: none;
+    }
+
+    #winnerBox p {
+      font-size: 1.3em;
+      margin-bottom: 15px;
+    }
+
+    #winnerName {
+      font-size: 2em;
+      font-weight: bold;
+      color: #333;
+    }
+
+    #winnerVoucher {
+      font-size: 1.5em;
+      color: #555;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
   <h1>🎯 中秋抽奖后台</h1>
   <button id="drawBtn">随机抽奖</button>
 
-  <div id="winnerBox" style="display:none;">
+  <div id="winnerBox">
     <p>🎉 恭喜中奖者：</p>
     <div id="winnerName"></div>
     <div id="winnerVoucher"></div>
@@ -50,7 +91,6 @@
       databaseURL: "https://mid-autumn-festival-2b9f3-default-rtdb.asia-southeast1.firebasedatabase.app/"
     };
 
-    // 初始化 Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
@@ -60,7 +100,6 @@
     const winnerVoucher = document.getElementById('winnerVoucher');
 
     drawBtn.addEventListener('click', async () => {
-      // 读取所有报名记录
       const snapshot = await db.ref('entries').get();
       if (!snapshot.exists()) {
         alert('⚠️ 没有可抽的记录');
@@ -70,20 +109,16 @@
       const data = snapshot.val();
       const keys = Object.keys(data);
 
-      // 随机抽一个
       const randomKey = keys[Math.floor(Math.random() * keys.length)];
       const winner = data[randomKey];
 
-      // 显示中奖者
       winnerBox.style.display = 'block';
       winnerName.textContent = winner.name;
       winnerVoucher.textContent = `固本号码：${winner.voucher}`;
 
-      // ⛔ 抽完立即删除，避免重复中奖
       await db.ref('entries/' + randomKey).remove();
       console.log(`✅ 已删除中奖者记录：${randomKey}`);
     });
   </script>
 </body>
 </html>
-
